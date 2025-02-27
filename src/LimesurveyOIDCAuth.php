@@ -97,6 +97,9 @@ class LimesurveyOIDCAuth extends AuthPluginBase
     {
         $baseURL = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}";
         $basePath = preg_split("/\/pluginmanager/", $_SERVER['REQUEST_URI']);
+
+        ray($baseURL . $basePath[0] . "/authentication/sa/login");
+
         $this->set('redirectURL', $baseURL . $basePath[0] . "/authentication/sa/login");
     }
 
@@ -109,6 +112,8 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $clientID = $this->get('clientID', null, null, false);
         $clientSecret = $this->get('clientSecret', null, null, false);
         $redirectURL = $this->get('redirectURL', null, null, false);
+
+        ray($providerURL, $clientID, $clientSecret, $redirectURL);
 
         if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL) {
             // Display authdb login if necessary plugin settings are missing.
