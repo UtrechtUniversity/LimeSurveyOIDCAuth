@@ -12,12 +12,12 @@ class LimesurveyOIDCAuth extends AuthPluginBase
     /**
      * @var string
      */
-    protected string $storage = 'DbStorage';
+    protected $storage = 'DbStorage';
 
     /**
      * @var array
      */
-    protected array $settings = [
+    protected $settings = [
         'info' => [
             'type' => 'info',
             'content' => '<h1>OpenID Connect</h1><p>Please provide the following settings.</br>If necessary settings are missing, the default authdb login will be shown.</p>'
@@ -46,10 +46,10 @@ class LimesurveyOIDCAuth extends AuthPluginBase
             'help' => 'Required',
             'default' => ''
         ],
-        'userRole' => [
-            'type' => 'string',
-            'label' => 'User Role #1',
-            'help' => 'Required - group name and user role seperated by a comma "," ',
+        'attributeMapping' => [
+            'type' => 'text',
+            'label' => 'OIDC attribute mapping',
+            'help' => 'Required, see documentation for more information',
             'default' => ''
         ],
         'acrValues' => [
@@ -95,9 +95,10 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $clientSecret = $this->get('clientSecret', null, null, false);
         $redirectURL = $this->get('redirectURL', null, null, false);
         $scope = $this->get('scope', null, null, false);
+        $attributeMapping = $this->get('attributeMapping', null, null, false);
         $acrValues = $this->get('acr_values', null, null, false);
 
-        if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL || !$scope) {
+        if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL || !$scope || !$attributeMapping) {
             // Display authdb login if necessary plugin settings are missing.
             return;
         }
@@ -116,10 +117,12 @@ class LimesurveyOIDCAuth extends AuthPluginBase
 
         try {
             if ($oidc->authenticate()) {
-                $username = $oidc->requestUserInfo('preferred_username');
-                $email = $oidc->requestUserInfo('email');
-                $givenName = $oidc->requestUserInfo('given_name');
-                $familyName = $oidc->requestUserInfo('family_name');
+                $attributeMapping = json_decode($attributeMapping, true);
+
+                $username = $oidc->requestUserInfo($attributeMapping['username']);
+                $email = $oidc->requestUserInfo($attributeMapping['email']);
+                $givenName = $oidc->requestUserInfo($attributeMapping['givenName']);
+                $familyName = $oidc->requestUserInfo($attributeMapping['familyName']);
 
                 $user = $this->api->getUserByName($username);
 
