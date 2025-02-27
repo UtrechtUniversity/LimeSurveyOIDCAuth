@@ -12,12 +12,12 @@ class LimesurveyOIDCAuth extends AuthPluginBase
     /**
      * @var string
      */
-    protected $storage = 'DbStorage';
+    protected string $storage = 'DbStorage';
 
     /**
      * @var array
      */
-    protected $settings = [
+    protected array $settings = [
         'info' => [
             'type' => 'info',
             'content' => '<h1>OpenID Connect</h1><p>Please provide the following settings.</br>If necessary settings are missing, the default authdb login will be shown.</p>'
@@ -40,32 +40,23 @@ class LimesurveyOIDCAuth extends AuthPluginBase
             'help' => 'Required',
             'default' => ''
         ],
-        'userRole1' => [
+        'userRole' => [
             'type' => 'string',
             'label' => 'User Role #1',
             'help' => 'Required - group name and user role seperated by a comma "," ',
             'default' => ''
         ],
-        'userRole2' => [
-            'type' => 'string',
-            'label' => 'User Role #2',
-            'help' => 'Optionnal - group name and user role seperated by a comma "," ',
-            'default' => ''
-        ],
-        'userRole3' => [
-            'type' => 'string',
-            'label' => 'User Role 3#',
-            'help' => 'Optionnal - group name and user role seperated by a comma "," ',
-            'default' => ''
+        'use2FA' => [
+            'type' => 'boolean',
+            'label' => 'Use TwoFactor Authentication',
+            'help' => 'Required',
+            'default' => false
         ],
         'redirectURL' => [
             'type' => 'string',
             'label' => 'Redirect URL',
-            'help' => 'The Redirect URL is automatically set on plugin activation.',
-            'default' => '',
-            'htmlOptions' => [
-                'readOnly' => true,
-            ]
+            'help' => 'The Redirect URL.',
+            'default' => ''
         ]
     ];
 
@@ -98,8 +89,6 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $baseURL = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}";
         $basePath = preg_split("/\/pluginmanager/", $_SERVER['REQUEST_URI']);
 
-        ray($baseURL . $basePath[0] . "/authentication/sa/login");
-
         $this->set('redirectURL', $baseURL . $basePath[0] . "/authentication/sa/login");
     }
 
@@ -112,8 +101,6 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $clientID = $this->get('clientID', null, null, false);
         $clientSecret = $this->get('clientSecret', null, null, false);
         $redirectURL = $this->get('redirectURL', null, null, false);
-
-        ray($providerURL, $clientID, $clientSecret, $redirectURL);
 
         if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL) {
             // Display authdb login if necessary plugin settings are missing.
