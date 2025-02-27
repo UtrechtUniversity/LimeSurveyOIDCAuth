@@ -6,8 +6,9 @@
         <creationDate>2025-02-27</creationDate>
         <lastUpdate>2025-02-27</lastUpdate>
         <author>Gerbrand Sterrenburg-Buijs</author>
+        <email>htsappteam@uu.nl</email>
         <authorUrl>https://github.com/UtrechtUniversity/LimeSurveyOIDCAuth</authorUrl>
-        <version>0.2.0</version>
+        <version>0.2.1</version>
         <license>GNU General Public License version 3</license>
         <description><![CDATA[Core: OIDC Authentication]]></description>
     </metadata>
