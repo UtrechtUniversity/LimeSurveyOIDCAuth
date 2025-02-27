@@ -96,7 +96,7 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $redirectURL = $this->get('redirectURL', null, null, false);
         $scope = $this->get('scope', null, null, false);
         $attributeMapping = $this->get('attributeMapping', null, null, false);
-        $acrValues = $this->get('acr_values', null, null, false);
+        $acrValues = $this->get('acrValues', null, null, false);
 
         if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL || !$scope || !$attributeMapping) {
             // Display authdb login if necessary plugin settings are missing.
@@ -105,7 +105,7 @@ class LimesurveyOIDCAuth extends AuthPluginBase
 
         $oidc = new OpenIDConnectClient($providerURL, $clientID, $clientSecret);
         $oidc->setRedirectURL($redirectURL);
-        $oidc->addScope($scope);
+        $oidc->addScope(explode(',', $scope));
 
         if ($acrValues) {
             $oidc->addAuthParam(['acr_values' => $acrValues]);
