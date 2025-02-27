@@ -5,9 +5,9 @@ require_once(__DIR__ . "/vendor/autoload.php");
 use Jumbojett\OpenIDConnectClient;
 
 /**
- * LimesurveyOIDCAuth
+ * AuthOpenIDConnect
  */
-class LimesurveyOIDCAuth extends AuthPluginBase
+class AuthOpenIDConnect extends AuthPluginBase
 {
     /**
      * @var string
@@ -182,6 +182,15 @@ class LimesurveyOIDCAuth extends AuthPluginBase
     public function afterLogout(): void
     {
         Yii::app()->getRequest()->redirect('/', true, 302);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public static function getAuthMethodName(): string
+    {
+        // Using string literal here so it can be picked by translation bot
+        return gT('OpenID Connect Authentication');
     }
 }
 
