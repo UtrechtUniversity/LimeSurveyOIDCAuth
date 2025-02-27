@@ -7,7 +7,7 @@
         <lastUpdate>2025-02-27</lastUpdate>
         <author>Gerbrand Sterrenburg-Buijs</author>
         <authorUrl>https://github.com/UtrechtUniversity/LimeSurveyOIDCAuth</authorUrl>
-        <version>0.1.2</version>
+        <version>0.1.3</version>
         <license>GNU General Public License version 3</license>
         <description><![CDATA[Core: OIDC Authentication]]></description>
     </metadata>
