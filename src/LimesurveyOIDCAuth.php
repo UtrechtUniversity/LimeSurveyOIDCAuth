@@ -40,17 +40,22 @@ class LimesurveyOIDCAuth extends AuthPluginBase
             'help' => 'Required',
             'default' => ''
         ],
+        'scope' => [
+            'type' => 'string',
+            'label' => 'Scope',
+            'help' => 'Required',
+            'default' => ''
+        ],
         'userRole' => [
             'type' => 'string',
             'label' => 'User Role #1',
             'help' => 'Required - group name and user role seperated by a comma "," ',
             'default' => ''
         ],
-        'use2FA' => [
-            'type' => 'boolean',
-            'label' => 'Use TwoFactor Authentication',
-            'help' => 'Required',
-            'default' => false
+        'acrValues' => [
+            'type' => 'string',
+            'label' => 'Extra ACR Values to set',
+            'default' => ''
         ],
         'redirectURL' => [
             'type' => 'string',
@@ -75,21 +80,9 @@ class LimesurveyOIDCAuth extends AuthPluginBase
      */
     public function init(): void
     {
-        $this->subscribe('beforeActivate');
         $this->subscribe('beforeLogin');
         $this->subscribe('newUserSession');
         $this->subscribe('afterLogout');
-    }
-
-    /**
-     * @return void
-     */
-    public function beforeActivate(): void
-    {
-        $baseURL = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}";
-        $basePath = preg_split("/\/pluginmanager/", $_SERVER['REQUEST_URI']);
-
-        $this->set('redirectURL', $baseURL . $basePath[0] . "/authentication/sa/login");
     }
 
     /**
@@ -101,15 +94,21 @@ class LimesurveyOIDCAuth extends AuthPluginBase
         $clientID = $this->get('clientID', null, null, false);
         $clientSecret = $this->get('clientSecret', null, null, false);
         $redirectURL = $this->get('redirectURL', null, null, false);
+        $scope = $this->get('scope', null, null, false);
+        $acrValues = $this->get('acr_values', null, null, false);
 
-        if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL) {
+        if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL || !$scope) {
             // Display authdb login if necessary plugin settings are missing.
             return;
         }
 
         $oidc = new OpenIDConnectClient($providerURL, $clientID, $clientSecret);
         $oidc->setRedirectURL($redirectURL);
-        $oidc->addScope(array('openid', 'profile', 'email'));
+        $oidc->addScope($scope);
+
+        if ($acrValues) {
+            $oidc->addAuthParam(['acr_values' => $acrValues]);
+        }
 
         if (isset($_REQUEST['error'])) {
             return;
@@ -147,6 +146,8 @@ class LimesurveyOIDCAuth extends AuthPluginBase
             }
         } catch (Throwable $error) {
             // Error occurred during authentication process, redirect to authdb login.
+            var_dump($error->getMessage()); die;
+
             return;
         }
     }
