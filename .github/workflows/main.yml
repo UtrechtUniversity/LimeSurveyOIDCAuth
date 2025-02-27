@@ -2,7 +2,9 @@ name: Build & Create Archive
 
 on:
   push:
-    tags: [ 'v*.*.*' ]
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop, "feature/**"]
 
 jobs:
   build:
