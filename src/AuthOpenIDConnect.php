@@ -61,7 +61,10 @@ class AuthOpenIDConnect extends AuthPluginBase
             'type' => 'string',
             'label' => 'Redirect URL',
             'help' => 'The Redirect URL.',
-            'default' => ''
+            'default' => '',
+            'htmlOptions' => [
+                'readOnly' => true,
+            ]
         ]
     ];
 
@@ -73,13 +76,14 @@ class AuthOpenIDConnect extends AuthPluginBase
     /**
      * @var string
      */
-    static protected $name = 'LimesurveyOIDCAuth';
+    static protected $name = 'AuthOpenIDConnect';
 
     /**
      * @return void
      */
     public function init(): void
     {
+        $this->subscribe('beforeActivate');
         $this->subscribe('beforeLogin');
         $this->subscribe('newUserSession');
         $this->subscribe('afterLogout');
@@ -88,8 +92,21 @@ class AuthOpenIDConnect extends AuthPluginBase
     /**
      * @return void
      */
+    public function beforeActivate(){
+        $baseURL = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}";
+        $basePath = preg_split("/\/pluginmanager/", $_SERVER['REQUEST_URI']);
+
+        $this->set('redirectURL', $baseURL . $basePath[0] . "/authentication/sa/login");
+    }
+
+    /**
+     * @return void
+     */
     public function beforeLogin(): void
     {
+        /* @var $authEvent LimeSurvey\PluginManager\PluginEvent */
+        $authEvent = $this->getEvent();
+
         $providerURL = $this->get('providerURL', null, null, false);
         $clientID = $this->get('clientID', null, null, false);
         $clientSecret = $this->get('clientSecret', null, null, false);
@@ -133,10 +150,10 @@ class AuthOpenIDConnect extends AuthPluginBase
                     $user->full_name = $givenName . ' ' . $familyName;
                     $user->parent_id = 1;
                     $user->lang = $this->api->getConfigKey('defaultlang', 'en');
-                    $user->email = $email;
+                    $user->email = $email[0];
 
                     if (!$user->save()) {
-                        // Couldn't create user, navigate to authdb login.
+                        $this->setAuthFailure(self::ERROR_USERNAME_INVALID, gT('Unable to create user'), $authEvent);
                         return;
                     }
                     // User successfully created.
@@ -144,13 +161,11 @@ class AuthOpenIDConnect extends AuthPluginBase
 
                 $this->setUsername($user->users_name);
                 $this->setAuthPlugin();
-
                 return;
             }
         } catch (Throwable $error) {
             // Error occurred during authentication process, redirect to authdb login.
-            var_dump($error->getMessage()); die;
-
+            $this->setAuthFailure(self::ERROR_AUTH_METHOD_INVALID, gT($error->getMessage()), $authEvent);
             return;
         }
     }
@@ -162,7 +177,7 @@ class AuthOpenIDConnect extends AuthPluginBase
     {
         $identity = $this->getEvent()->get('identity');
 
-        if ($identity->plugin != 'LimesurveyOIDCAuth') {
+        if ($identity->plugin != 'AuthOpenIDConnect') {
             return;
         }
 
