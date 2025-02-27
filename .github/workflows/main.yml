@@ -33,5 +33,5 @@ jobs:
       - name: Upload Release
         uses: ncipollo/release-action@v1.12.0
         with:
-          artifacts: "AuthOpenIDConnect.zip"
+          artifacts: "src/AuthOpenIDConnect.zip"
           token: ${{ secrets.GITHUB_TOKEN }}
