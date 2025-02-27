@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+    <metadata>
+        <name>LimeSurveyOIDCAuth</name>
+        <type>plugin</type>
+        <creationDate>2025-02-27</creationDate>
+        <lastUpdate>2025-02-27</lastUpdate>
+        <author>Gerbrand Sterrenburg-Buijs</author>
+        <authorUrl>https://github.com/UtrechtUniversity/LimeSurveyOIDCAuth</authorUrl>
+        <version>1.0.0</version>
+        <license>GNU General Public License version 3</license>
+        <description><![CDATA[Core: OIDC Authentication]]></description>
+    </metadata>
+
+    <compatibility>
+        <version>6.1</version>
+    </compatibility>
+
+    <updaters disabled="disabled">
+    </updaters>
+</config>
