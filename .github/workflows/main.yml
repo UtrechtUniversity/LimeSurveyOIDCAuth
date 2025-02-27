@@ -26,7 +26,7 @@ jobs:
         uses: thedoctor0/zip-release@0.7.5
         with:
           type: 'zip'
-          path: './src'
+          directory: './src'
           filename: 'AuthOpenIDConnect.zip'
           exclusions: '*.git* /*node_modules/* .editorconfig'
 
