@@ -22,10 +22,16 @@ jobs:
       - name: Install dependencies
         run: cd ./src && composer update && composer install --prefer-dist --no-suggest --no-progress
 
-      - name: Archive Release
+      - name: Create ZIP file
         uses: thedoctor0/zip-release@0.7.5
         with:
           type: 'zip'
           path: './src'
           filename: 'AuthOpenIDConnect.zip'
           exclusions: '*.git* /*node_modules/* .editorconfig'
+
+      - name: Upload Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          artifacts: "AuthOpenIDConnect.zip"
+          token: ${{ secrets.GITHUB_TOKEN }}
