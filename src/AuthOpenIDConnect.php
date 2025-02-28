@@ -3,6 +3,7 @@
 require_once(__DIR__ . "/vendor/autoload.php");
 
 use Jumbojett\OpenIDConnectClient;
+use Jumbojett\OpenIDConnectClientException;
 
 /**
  * AuthOpenIDConnect
@@ -46,16 +47,34 @@ class AuthOpenIDConnect extends AuthPluginBase
             'help' => 'Required',
             'default' => ''
         ],
-        'attributeMapping' => [
-            'type' => 'text',
-            'label' => 'OIDC attribute mapping',
-            'help' => 'Required, see documentation for more information',
-            'default' => ''
-        ],
         'acrValues' => [
             'type' => 'string',
             'label' => 'Extra ACR Values to set',
             'default' => ''
+        ],
+        'attributeUsername' => [
+            'type' => 'string',
+            'label' => 'OIDC Attribute Username',
+            'help' => 'Required',
+            'default' => 'username'
+        ],
+        'attributeGivenName' => [
+            'type' => 'string',
+            'label' => 'OIDC Attribute GivenName',
+            'help' => 'Required',
+            'default' => 'givenName'
+        ],
+        'attributeFamilyName' => [
+            'type' => 'string',
+            'label' => 'OIDC Attribute FamilyName',
+            'help' => 'Required',
+            'default' => 'familyName'
+        ],
+        'attributeEmail' => [
+            'type' => 'string',
+            'label' => 'OIDC Attribute GivenName',
+            'help' => 'Required',
+            'default' => 'email'
         ],
         'redirectURL' => [
             'type' => 'string',
@@ -86,13 +105,50 @@ class AuthOpenIDConnect extends AuthPluginBase
         $this->subscribe('beforeActivate');
         $this->subscribe('beforeLogin');
         $this->subscribe('newUserSession');
+
+        // logout related
+        $this->subscribe('beforeLogout');
         $this->subscribe('afterLogout');
+    }
+
+    /**
+     * @return OpenIDConnectClient
+     */
+    private function getOIDCClient(): ?OpenIDConnectClient
+    {
+        $providerURL = $this->get('providerURL', null, null, false);
+        $clientID = $this->get('clientID', null, null, false);
+        $clientSecret = $this->get('clientSecret', null, null, false);
+
+        if (!$providerURL || !$clientSecret || !$clientID) {
+            return null;
+        }
+
+        $oidc = new OpenIDConnectClient(
+            $providerURL,
+            $clientID,
+            $clientSecret
+        );
+
+        $oidc->addScope(explode(',', $this->get('scope', null, null, [])));
+
+        $acrValues = $this->get('acrValues', null, null, false);
+
+        // enable 2fa if requested
+        if ($acrValues) {
+            $oidc->addAuthParam(['acr_values' => $acrValues]);
+        }
+
+        $oidc->setRedirectURL($this->get('redirectURL', null, null, false));
+
+        return $oidc;
     }
 
     /**
      * @return void
      */
-    public function beforeActivate(){
+    public function beforeActivate()
+    {
         $baseURL = 'http' . (isset($_SERVER['HTTPS']) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}";
         $basePath = preg_split("/\/pluginmanager/", $_SERVER['REQUEST_URI']);
 
@@ -104,42 +160,21 @@ class AuthOpenIDConnect extends AuthPluginBase
      */
     public function beforeLogin(): void
     {
+        $oidc = $this->getOIDCClient();
+
+        if (is_null($oidc) || isset($_REQUEST['error'])) {
+            return;
+        }
+
         /* @var $authEvent LimeSurvey\PluginManager\PluginEvent */
         $authEvent = $this->getEvent();
 
-        $providerURL = $this->get('providerURL', null, null, false);
-        $clientID = $this->get('clientID', null, null, false);
-        $clientSecret = $this->get('clientSecret', null, null, false);
-        $redirectURL = $this->get('redirectURL', null, null, false);
-        $scope = $this->get('scope', null, null, false);
-        $attributeMapping = $this->get('attributeMapping', null, null, false);
-        $acrValues = $this->get('acrValues', null, null, false);
-
-        if (!$providerURL || !$clientSecret || !$clientID || !$redirectURL || !$scope || !$attributeMapping) {
-            // Display authdb login if necessary plugin settings are missing.
-            return;
-        }
-
-        $oidc = new OpenIDConnectClient($providerURL, $clientID, $clientSecret);
-        $oidc->setRedirectURL($redirectURL);
-        $oidc->addScope(explode(',', $scope));
-
-        if ($acrValues) {
-            $oidc->addAuthParam(['acr_values' => $acrValues]);
-        }
-
-        if (isset($_REQUEST['error'])) {
-            return;
-        }
-
         try {
             if ($oidc->authenticate()) {
-                $attributeMapping = json_decode($attributeMapping, true);
-
-                $username = $oidc->requestUserInfo($attributeMapping['username']);
-                $email = $oidc->requestUserInfo($attributeMapping['email']);
-                $givenName = $oidc->requestUserInfo($attributeMapping['givenName']);
-                $familyName = $oidc->requestUserInfo($attributeMapping['familyName']);
+                $username = $oidc->requestUserInfo($this->get('attributeUsername', null, null, false));
+                $givenName = $oidc->requestUserInfo($this->get('attributeGivenName', null, null, false));
+                $familyName = $oidc->requestUserInfo($this->get('attributeFamilyName', null, null, false));
+                $email = $oidc->requestUserInfo($this->get('attributeEmail', null, null, false));
 
                 $user = $this->api->getUserByName($username);
 
@@ -156,11 +191,11 @@ class AuthOpenIDConnect extends AuthPluginBase
                         $this->setAuthFailure(self::ERROR_USERNAME_INVALID, gT('Unable to create user'), $authEvent);
                         return;
                     }
-                    // User successfully created.
                 }
 
                 $this->setUsername($user->users_name);
                 $this->setAuthPlugin();
+
                 return;
             }
         } catch (Throwable $error) {
@@ -189,6 +224,16 @@ class AuthOpenIDConnect extends AuthPluginBase
         } else {
             $this->setAuthSuccess($user);
         }
+    }
+
+    /**
+     * @return void
+     * @throws OpenIDConnectClientException
+     */
+    public function beforeLogout(): void
+    {
+        $oidc = $this->getOIDCClient();
+        $oidc->signOut(session('oidcIDToken'), route('auth.oidc.logout.callback'));
     }
 
     /**
