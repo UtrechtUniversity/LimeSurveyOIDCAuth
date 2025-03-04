@@ -130,6 +130,7 @@ class AuthOpenIDConnect extends AuthPluginBase
      */
     public function init(): void
     {
+        $this->subscribe('getGlobalBasePermissions');
         $this->subscribe('beforeActivate');
         $this->subscribe('beforeLogin');
         $this->subscribe('newUserSession');
@@ -141,6 +142,27 @@ class AuthOpenIDConnect extends AuthPluginBase
         if (!$this->get('forceOIDCLogin', null, null, false)) {
             $this->subscribe('newLoginForm');
         }
+    }
+
+    /**
+     * getGlobalBasePermissions
+     *
+     * Add AuthLDAP Permission to global Permission
+     */
+    public function getGlobalBasePermissions()
+    {
+        $this->getEvent()->append('globalBasePermissions', array(
+            'auth_oidc' => array(
+                'create' => false,
+                'update' => false,
+                'delete' => false,
+                'import' => false,
+                'export' => false,
+                'title' => gT("Use OIDC authentication"),
+                'description' => gT("Use OIDC authentication"),
+                'img' => 'usergroup'
+            ),
+        ));
     }
 
     /**
@@ -173,6 +195,28 @@ class AuthOpenIDConnect extends AuthPluginBase
         $oidc->setRedirectURL($this->get('redirectURL', null, null, false));
 
         return $oidc;
+    }
+
+    /**
+     * @param $oidc
+     * @param $name
+     * @return false|mixed|null
+     * @throws Exception
+     */
+    private function getAttribute($oidc, $name) {
+        $attributeName = $this->get($name, null, null, false);
+
+        if (!$attributeName) {
+            throw new Exception('Missing attribute name: ' . $name);
+        }
+
+        $attribute = $oidc->requestUserInfo($attributeName);
+
+        if (is_array($attribute)) {
+            return current($attribute);
+        }
+
+        return $attribute;
     }
 
     /**
@@ -224,10 +268,10 @@ class AuthOpenIDConnect extends AuthPluginBase
 
         try {
             if ($oidc->authenticate()) {
-                $username = $oidc->requestUserInfo($this->get('attributeUsername', null, null, false));
-                $givenName = $oidc->requestUserInfo($this->get('attributeGivenName', null, null, false));
-                $familyName = $oidc->requestUserInfo($this->get('attributeFamilyName', null, null, false));
-                $email = $oidc->requestUserInfo($this->get('attributeEmail', null, null, false));
+                $username = $this->getAttribute($oidc, 'attributeUsername');
+                $givenName = $this->getAttribute($oidc, 'attributeGivenName');
+                $familyName = $this->getAttribute($oidc, 'attributeFamilyName');
+                $email = $this->getAttribute($oidc, 'attributeEmail');
 
                 $user = $this->api->getUserByName($username);
 
@@ -238,9 +282,13 @@ class AuthOpenIDConnect extends AuthPluginBase
                     $user->full_name = $givenName . ' ' . $familyName;
                     $user->parent_id = 1;
                     $user->lang = $this->api->getConfigKey('defaultlang', 'en');
-                    $user->email = $email[0];
+                    $user->email = $email;
 
-                    if (!$user->save()) {
+                    if ($user->save()) {
+                        // set default permissions
+                        Permission::model()->setGlobalPermission($user->uid, 'auth_oidc');
+                        Permission::model()->setGlobalPermission($user->uid, 'surveys', ['create_p']);
+                    } else {
                         $this->setAuthFailure(self::ERROR_USERNAME_INVALID, gT('Unable to create user'), $authEvent);
                         return;
                     }
